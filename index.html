@@ -260,12 +260,45 @@
 
   @media (max-width:880px){
     body{overflow:auto;height:auto;}
-    .app{height:auto;min-height:100vh;}
+    .app{height:auto;min-height:100vh;min-height:100dvh;}
     #scene-sim.show,#scene-end.show,#scene-set.show{grid-template-columns:1fr !important;display:flex !important;flex-direction:column !important;height:auto !important;}
     #scene-sim.show .log-panel{grid-column:auto;}
-    .body-box{height:320px;width:240px;}
+    .setup-wrap{grid-template-columns:1fr;}
+    .body-box{width:min(280px,70%);height:auto;aspect-ratio:200/440;}
     .setup-form{max-height:none;}
     .score-big{font-size:38px;}
+  }
+
+  /* ---------- 手机竖屏适配（≤560px，置于 880px 块后靠声明顺序覆盖） ---------- */
+  @media (max-width:560px){
+    /* 顶栏精简：只留 MotoShanKing 徽章 + 01/02/03 步骤方块 */
+    .app{padding:8px 12px 12px;}  .topbar{gap:8px;margin-bottom:8px;}
+    .brand{display:none;}  .anim-toggle{display:none;}
+    .watermark{padding:5px 9px 6px;}  .watermark .wm-cn small{display:none;}
+    .steps{gap:6px;}  .step{padding:7px 9px;}  .step .st-t{display:none;}
+    .disclaimer-top{font-size:11px;padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    /* 场景01 单列 */
+    .setup-wrap{grid-template-columns:1fr;gap:14px;}
+    .story-card{padding:16px 18px;}  .story-text{font-size:14.5px;line-height:1.8;}
+    .setup-form{max-height:none;overflow:visible;padding:16px;}
+    .opt{padding:12px 8px;min-width:64px;font-size:14px;}
+    .btn-start{padding:16px;font-size:17px;}
+    /* 场景02 竖屏流：人体图大图 → 体征 → 伤情/结算 → 日志 */
+    #scene-sim.show{gap:10px;}
+    #scene-sim.show .stage-center{order:-1;}
+    .body-box{width:auto;height:44vh;max-width:88%;aspect-ratio:200/440;}
+    .inj-list{max-height:none;overflow:visible;}
+    .score-big{font-size:40px;}  .float-num{font-size:34px;}
+    .log-panel .log{height:auto;max-height:30vh;overflow:auto;}
+    /* 场景03 竖屏：badge → 费用 → 人体 → 明细 → 免责 → 操作 */
+    #scene-end.show{gap:14px;}
+    .end-left,.end-right{display:contents;}
+    .badge-box{order:-2;padding:14px;}  .cost-banner{order:-1;padding:14px 16px;}
+    .cost-banner .big{font-size:34px;}  .badge{width:100px;height:100px;font-size:44px;}
+    .end-body{order:0;flex:none;padding:10px;}
+    .end-body svg{width:min(64vw,280px);height:auto;aspect-ratio:200/440;}
+    .detail-panel{order:1;flex:none;}  .disclaimer-end{order:2;}  .actions{order:3;}
+    details summary{padding:12px;}  .actions button{padding:14px;}
   }
 </style>
 </head>
@@ -279,9 +312,9 @@
     </div>
     <div class="brand"><span class="dot"></span>人体受伤模拟器 <small>· 摩托车事故伤情结算 · 装备能护住你吗</small></div>
     <div class="steps">
-      <div class="step active" id="step-1">01 事故设定</div>
-      <div class="step" id="step-2">02 模拟过程</div>
-      <div class="step" id="step-3">03 总结画面</div>
+      <div class="step active" id="step-1"><span class="st-n">01</span> <span class="st-t">事故设定</span></div>
+      <div class="step" id="step-2"><span class="st-n">02</span> <span class="st-t">模拟过程</span></div>
+      <div class="step" id="step-3"><span class="st-n">03</span> <span class="st-t">总结画面</span></div>
     </div>
     <label class="anim-toggle" id="animToggleLabel" title="系统开启「减弱动态效果」时会自动关闭动效，可在此强制开启"><input type="checkbox" id="animToggle" checked><span>动效</span></label>
   </div>

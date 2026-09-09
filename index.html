@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>人体受伤模拟器 · 摩托车事故伤情结算</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Silkscreen:wght@400;700&family=Departure+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --c0:#0a0e1a; --c1:#141b2e; --c2:#1b2740;
+    --cyan:#35E0F0; --cyan-dim:#1b6b78;
+    --yellow:#FFD400; --red:#ff3b54; --green:#3ee07a; --orange:#ff9d2e;
+    --txt:#eef7fc; --txt-dim:#9db4c7;
+    --bd:#2a3852; --bd-soft:rgba(53,224,240,.35);
+    --shadow:4px 4px 0 #05070d;
+    --grid:rgba(53,224,240,.06);
+    --font:"PingFang SC","HarmonyOS Sans SC","Microsoft YaHei",-apple-system,system-ui,"Hiragino Sans GB",sans-serif;
+    --px:"Press Start 2P","PingFang SC",monospace;
+    --mono:"Departure Mono",ui-monospace,"Cascadia Mono",Consolas,Menlo,monospace;
+    --disp:"VT323","Departure Mono",ui-monospace,Consolas,monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{
+    background:var(--c0); color:var(--txt); font-family:var(--font);
+    height:100vh; overflow:hidden; letter-spacing:.3px;
+  }
+  #wash{position:fixed;inset:0;width:100%;height:100%;z-index:0;image-rendering:pixelated;pointer-events:none;transform:translateZ(0);}
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:2;transform:translateZ(0);
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,.10) 0 2px,transparent 2px 6px);}
+  .app{position:relative;z-index:1;height:100vh;display:flex;flex-direction:column;padding:10px 16px 12px;}
+
+  .topbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px;}
+  .brand{display:flex;align-items:center;gap:11px;font-weight:800;letter-spacing:1.5px;font-size:17px;}
+  .brand .dot{width:10px;height:10px;background:var(--cyan);box-shadow:0 0 0 2px var(--c0),0 0 12px var(--cyan);animation:breath 2.4s steps(2) infinite;}
+  @keyframes breath{0%,100%{opacity:1}50%{opacity:.4}}
+  .brand small{color:var(--txt-dim);font-weight:400;font-size:12px;letter-spacing:0;}
+  .watermark{flex:none;display:flex;flex-direction:column;gap:3px;padding:7px 12px 8px;border:3px solid var(--cyan);background:var(--c0);box-shadow:4px 4px 0 var(--cyan-dim);user-select:none;}
+  .watermark .wm-en{font-family:var(--px);font-size:10px;color:var(--cyan);letter-spacing:1px;line-height:1.5;white-space:nowrap;}
+  .watermark .wm-cn{font-size:13px;font-weight:700;color:var(--yellow);letter-spacing:1px;white-space:nowrap;}
+  .watermark .wm-cn small{color:#a9bccd;font-weight:400;font-size:12px;letter-spacing:.5px;}
+  .steps{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap;}
+  .step{padding:7px 14px;border:2px solid var(--bd);font-size:12px;color:var(--txt-dim);background:var(--c1);transition:.15s;letter-spacing:1px;text-transform:uppercase;}
+  .step.active{color:var(--cyan);border-color:var(--cyan);box-shadow:3px 3px 0 var(--cyan-dim);}
+  .step.done{color:var(--green);border-color:var(--green);}
+  .anim-toggle{display:flex;align-items:center;gap:8px;margin-left:14px;font-size:12px;letter-spacing:1px;color:var(--txt-dim);cursor:pointer;user-select:none;padding:6px 12px;border:2px solid var(--bd);background:var(--c1);transition:.15s;white-space:nowrap;}
+  .anim-toggle:hover{border-color:var(--cyan);color:var(--txt);}
+  .anim-toggle input{appearance:none;-webkit-appearance:none;width:34px;height:18px;border:2px solid var(--bd);background:var(--c0);position:relative;cursor:pointer;transition:.15s;outline:none;flex:none;}
+  .anim-toggle input::after{content:"";position:absolute;top:1px;left:1px;width:12px;height:12px;background:var(--txt-dim);transition:.15s;}
+  .anim-toggle input:checked{background:var(--cyan-dim);}
+  .anim-toggle input:checked::after{left:17px;background:var(--cyan);}
+  .disclaimer-top{font-size:12px;color:#a9bccd;border-top:2px dashed var(--bd-soft);border-bottom:2px dashed var(--bd-soft);padding:5px 8px;margin-bottom:9px;line-height:1.55;}
+
+  .scene{flex:1;min-height:0;display:none;}
+  .scene.show{display:block;}
+
+  /* ---------- 场景01 ---------- */
+  #scene-set.show{display:flex;align-items:flex-start;justify-content:center;height:100%;overflow:auto;}
+  .setup-wrap{width:min(1000px,100%);display:grid;grid-template-columns:1.02fr .98fr;gap:18px;align-items:stretch;padding:4px 0;}
+  .story-card{background:var(--c1);border:3px solid var(--bd);box-shadow:var(--shadow);padding:24px 26px;position:relative;overflow:hidden;}
+  .story-card::after{content:"";position:absolute;right:0;top:0;width:16px;height:16px;background:var(--cyan);box-shadow:-6px 0 0 var(--yellow),-12px 0 0 var(--red);}
+  .story-card h2{margin:0 0 6px;font-size:13px;color:var(--cyan);letter-spacing:2px;text-transform:uppercase;}
+  .story-card .tag{display:inline-block;font-size:11px;color:var(--yellow);border:2px solid rgba(255,212,0,.5);padding:2px 9px;margin-bottom:14px;}
+  .story-text{font-size:15.5px;line-height:1.9;color:var(--txt);}
+  .story-text b{color:var(--cyan);font-weight:700;}
+  .setup-form{background:var(--c1);border:3px solid var(--bd);box-shadow:var(--shadow);padding:20px 22px;display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 150px);overflow:auto;}
+  .field label{display:block;font-size:12px;color:var(--txt-dim);margin-bottom:7px;letter-spacing:1px;text-transform:uppercase;}
+  .field .opts{display:flex;gap:7px;flex-wrap:wrap;}
+  .opt{flex:1;min-width:52px;text-align:center;padding:9px 6px;border:2px solid var(--bd);background:var(--c0);font-size:13px;cursor:pointer;transition:.15s;color:var(--txt);user-select:none;letter-spacing:.3px;}
+  .opt:hover{border-color:var(--cyan);transform:translate(-1px,-1px);box-shadow:2px 2px 0 var(--cyan-dim);}
+  .opt.sel{background:var(--cyan-dim);border-color:var(--cyan);color:#04141a;font-weight:700;box-shadow:3px 3px 0 var(--cyan);}
+  .subgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .subgrid .field{margin:0;}
+  .seed-row{display:flex;gap:8px;align-items:center;}
+  .seed-row input{flex:1;background:var(--c0);border:2px solid var(--bd);color:var(--txt);padding:9px 10px;font-size:13px;font-family:var(--mono);}
+  .seed-row button{padding:9px 12px;border:2px solid var(--bd);background:var(--c0);color:var(--txt-dim);cursor:pointer;font-size:12px;transition:.15s;}
+  .seed-row button:hover{color:var(--cyan);border-color:var(--cyan);}
+  .btn-start{margin-top:4px;padding:15px;border:3px solid var(--txt);font-family:var(--font);font-size:16px;font-weight:800;letter-spacing:3px;cursor:pointer;background:var(--cyan);color:#04141a;box-shadow:5px 5px 0 var(--c0),0 0 0 3px var(--cyan);transition:.12s;}
+  .btn-start:hover{background:var(--yellow);}
+  .btn-start:active{transform:translate(5px,5px);box-shadow:0 0 0 var(--c0),0 0 0 3px var(--cyan);}
+
+  /* ---------- 场景02 ---------- */
+  #scene-sim.show{display:grid;grid-template-columns:240px 1fr 290px;grid-template-rows:1fr 138px;gap:12px;height:100%;}
+  .panel{background:var(--c1);border:3px solid var(--bd);box-shadow:var(--shadow);padding:14px 16px;min-height:0;overflow:hidden;}
+  .panel h3{margin:0 0 12px;font-size:12px;color:var(--cyan);letter-spacing:2.5px;font-weight:700;display:flex;align-items:center;gap:8px;text-transform:uppercase;}
+  .panel h3::before{content:"";width:8px;height:8px;background:var(--cyan);box-shadow:0 0 0 2px var(--c0);}
+
+  .vitals{display:flex;flex-direction:column;gap:9px;}
+  .vital{display:grid;grid-template-columns:52px 1fr 24px;align-items:center;gap:8px;}
+  .vital .vname{font-size:12px;color:var(--txt-dim);}
+  .vital .vbar{height:10px;border:2px solid var(--bd);background:var(--c0);overflow:hidden;position:relative;}
+  .vital .vbar i{position:absolute;left:0;top:0;bottom:0;width:60%;background:var(--green);transition:width .5s,background .5s;}
+  .vital .vval{font-size:15px;font-family:var(--mono);font-weight:700;text-align:right;color:var(--txt);}
+  .vital .vdot{width:9px;height:9px;background:var(--green);justify-self:end;}
+
+  .inj-list{margin-top:12px;display:flex;flex-direction:column;gap:6px;overflow:auto;max-height:44%;}
+  .inj-item{font-size:13px;padding:6px 9px;border:2px solid var(--bd);background:var(--c0);border-left:4px solid var(--cyan-dim);display:flex;justify-content:space-between;gap:6px;opacity:0;transform:translateX(-8px);transition:.3s;}
+  .inj-item.in{opacity:1;transform:none;}
+  .inj-item.sev-低{border-left-color:var(--green);}
+  .inj-item.sev-中{border-left-color:var(--orange);}
+  .inj-item.sev-重{border-left-color:var(--red);}
+  .inj-item .nm{color:var(--txt);}
+  .inj-item .c{color:var(--yellow);font-family:var(--mono);white-space:nowrap;font-size:15px;font-weight:700;}
+
+  .stage-center{position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;border:3px solid var(--bd);background:var(--c0);box-shadow:var(--shadow);}
+  .scanline{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(53,224,240,.06) 0 1px,transparent 1px 4px);opacity:.5;}
+  .scene.show .stage-center.shake{animation:shake .5s cubic-bezier(.36,.07,.19,.97);}
+  @keyframes shake{10%,90%{transform:translate(-2px,1px)}20%,80%{transform:translate(4px,-2px)}30%,50%,70%{transform:translate(-7px,3px)}40%,60%{transform:translate(7px,-3px)}}
+  .impact{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;}
+  .impact.go{animation:impactFlash .55s ease-out;}
+  @keyframes impactFlash{0%{opacity:0}15%{opacity:1}100%{opacity:0}}
+  .impact span{font-family:var(--px);font-size:42px;font-weight:900;letter-spacing:6px;color:var(--red);text-shadow:4px 4px 0 #05070d;transform:scale(1.3);}
+  .body-box{position:relative;width:min(290px,82%);height:100%;--dmg:0;}
+  .body-box::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 44%,rgba(255,59,84,calc(var(--dmg)*0.5)),transparent 70%);opacity:var(--dmg);transition:opacity .6s;mix-blend-mode:screen;}
+  .body-box svg{width:100%;height:100%;display:block;}
+  .bone{fill:none;stroke:var(--cyan);stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round;transition:stroke .35s,filter .35s;}
+  .joint{fill:rgba(53,224,240,.12);stroke:var(--cyan);stroke-width:2;transition:fill .35s,stroke .35s;}
+  .flesh{fill:url(#fleshGrad);stroke:var(--cyan);stroke-opacity:.28;stroke-width:1.4;transition:stroke .35s;}
+  .impact-glow{opacity:0;transition:opacity .4s;}
+  .body-part.injured .bone{stroke:var(--inj,var(--red));filter:drop-shadow(2px 2px 0 var(--inj,var(--red)));}
+  .body-part.injured .joint{fill:rgba(255,59,84,.28);stroke:var(--inj,var(--red));}
+  .body-part.injured .impact-glow{opacity:1;animation:glowPulse 1.6s ease-in-out infinite;}
+  .body-part.pulse .bone{animation:bonePulse 1s ease-in-out infinite;}
+  @keyframes bonePulse{0%,100%{filter:none}50%{filter:drop-shadow(2px 2px 0 rgba(255,59,84,1));}}
+  @keyframes glowPulse{0%,100%{opacity:.5}50%{opacity:1}}
+  .float-num{position:absolute;font-family:var(--disp);font-weight:700;font-size:46px;color:var(--yellow);text-shadow:3px 3px 0 #05070d,5px 5px 0 rgba(255,59,84,.45);pointer-events:none;animation:floatUp 1.4s ease-out forwards;z-index:5;white-space:nowrap;}
+  @keyframes floatUp{0%{opacity:0;transform:translate(-50%,10px) scale(.7)}20%{opacity:1}100%{opacity:0;transform:translate(-50%,-72px) scale(1.15)}}
+
+  .score-big{font-family:var(--disp);font-size:50px;font-weight:700;color:var(--yellow);line-height:1;text-shadow:3px 3px 0 #05070d;letter-spacing:0;}
+  .score-sub{font-size:12px;color:var(--txt-dim);margin-top:3px;letter-spacing:1px;}
+  .control-row{margin-top:14px;padding-top:12px;border-top:2px dashed var(--bd-soft);font-size:14px;}
+  .control-row .lbl{color:var(--txt-dim);font-size:12.5px;}
+  .nogear{color:var(--red);text-decoration:line-through;font-family:var(--mono);font-size:15px;}
+  .save{color:var(--green);font-weight:700;font-family:var(--mono);margin-top:4px;font-size:16px;}
+  .mini-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;}
+  .mini{background:var(--c0);border:2px solid var(--bd);padding:10px;text-align:center;}
+  .mini .n{font-family:var(--disp);font-size:22px;font-weight:700;color:var(--cyan);}
+  .mini .t{font-size:12px;color:var(--txt-dim);margin-top:2px;}
+
+  .log-panel{grid-column:1 / -1;}
+  .log{height:100%;overflow:auto;font-size:13.5px;line-height:1.75;font-family:var(--mono);}
+  .log .ln{opacity:0;transform:translateY(4px);transition:.3s;padding:1px 0;border-bottom:1px solid rgba(53,224,240,.08);}
+  .log .ln.in{opacity:1;transform:none;}
+  .log .ln .ic{color:var(--cyan);}
+  .log .ln.warn .ic{color:var(--orange);}
+  .log .ln.crit .ic{color:var(--red);}
+  .log .ln .amt{color:var(--yellow);font-size:15px;font-weight:700;}
+
+  /* ---------- 场景03 ---------- */
+  #scene-end.show{display:grid;grid-template-columns:300px 1fr;gap:18px;height:100%;}
+  .end-left{display:flex;flex-direction:column;gap:14px;min-height:0;}
+  .badge-box{background:var(--c1);border:3px solid var(--bd);box-shadow:var(--shadow);padding:20px;display:flex;flex-direction:column;align-items:center;gap:12px;}
+  .badge{width:122px;height:122px;border-radius:0;display:flex;align-items:center;justify-content:center;font-family:var(--px);font-size:52px;font-weight:900;border:4px solid var(--cyan);color:var(--cyan);transform:scale(0);}
+  .badge.drop{animation:badgeDrop .9s cubic-bezier(.2,1.4,.4,1) forwards;}
+  @keyframes badgeDrop{0%{transform:translateY(-160px) scale(.4);opacity:0}60%{transform:translateY(10px) scale(1.08);opacity:1}100%{transform:none;opacity:1}}
+  .badge.S{color:var(--green);border-color:var(--green);}
+  .badge.A{color:var(--cyan);border-color:var(--cyan);}
+  .badge.B{color:var(--yellow);border-color:var(--yellow);}
+  .badge.C{color:var(--orange);border-color:var(--orange);}
+  .badge.D{color:var(--red);border-color:var(--red);}
+  .badge-cap{font-size:13px;color:var(--txt-dim);text-align:center;}
+  .end-body{background:var(--c1);border:3px solid var(--bd);box-shadow:var(--shadow);padding:14px;display:flex;align-items:center;justify-content:center;flex:1;min-height:0;}
+  .end-body svg{width:auto;height:100%;max-height:100%;}
+  .end-right{display:flex;flex-direction:column;gap:12px;min-height:0;}
+  .cost-banner{background:var(--c1);border:3px solid var(--yellow);box-shadow:var(--shadow);padding:18px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+  .cost-banner .t{font-size:13px;color:var(--txt-dim);letter-spacing:1px;}
+  .cost-banner .big{font-family:var(--disp);font-size:46px;font-weight:700;color:var(--yellow);text-shadow:3px 3px 0 #05070d;}
+  .cost-banner .cmp{font-size:13px;text-align:right;}
+  .cost-banner .cmp .save{font-size:15px;font-family:var(--mono);}
+  .detail-panel{background:var(--c1);border:3px solid var(--bd);box-shadow:var(--shadow);padding:14px 18px;flex:1;overflow:auto;}
+  .detail-panel h3{margin:0 0 8px;font-size:13px;color:var(--cyan);letter-spacing:2px;text-transform:uppercase;}
+  details{border:2px solid var(--bd);margin-bottom:8px;background:var(--c0);overflow:hidden;}
+  details summary{cursor:pointer;padding:9px 12px;font-size:14px;display:flex;justify-content:space-between;gap:8px;align-items:center;list-style:none;}
+  details summary::-webkit-details-marker{display:none;}
+  details summary .sev{font-size:12.5px;padding:2px 8px;font-family:var(--mono);font-weight:700;}
+  .sev-低{background:rgba(62,224,122,.2);color:var(--green);}
+  .sev-中{background:rgba(255,157,46,.2);color:var(--orange);}
+  .sev-重{background:rgba(255,59,84,.2);color:var(--red);}
+  details .body{padding:4px 12px 12px;font-size:13.5px;color:var(--txt-dim);line-height:1.7;}
+  details .body .row{display:flex;justify-content:space-between;gap:10px;padding:2px 0;border-bottom:1px dotted rgba(53,224,240,.1);}
+  details .body .row b{color:var(--txt);font-weight:500;}
+  details .body .row .v{color:var(--yellow);font-family:var(--mono);}
+  .disclaimer-end{font-size:12px;color:#a9bccd;line-height:1.6;padding:8px 10px;border-top:2px dashed var(--bd-soft);}
+  .actions{display:flex;gap:10px;margin-top:2px;}
+  .actions button{flex:1;padding:12px;border:3px solid var(--bd);background:var(--c1);color:var(--cyan);font-size:14px;cursor:pointer;letter-spacing:1px;transition:.15s;}
+  .actions button:hover{border-color:var(--cyan);transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--cyan-dim);}
+  .actions button:active{transform:translate(2px,2px);box-shadow:none;}
+
+  /* ---------- 动效增强（像素风 · steps() 硬切，无缓动） ---------- */
+  @keyframes panelIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+  @keyframes sideInL{from{opacity:0;transform:translateX(-36px)}to{opacity:1;transform:none}}
+  @keyframes sideInR{from{opacity:0;transform:translateX(36px)}to{opacity:1;transform:none}}
+  @keyframes scanMove{0%{top:-10%}100%{top:112%}}
+  @keyframes shock{0%{opacity:.9;transform:translate(-50%,-50%) scale(.3)}100%{opacity:0;transform:translate(-50%,-50%) scale(4.2)}}
+  @keyframes rippleFx{to{transform:translate(-50%,-50%) scale(1);opacity:0}}
+  @keyframes ecgTrace{to{stroke-dashoffset:-220}}
+  @keyframes numGlow{0%,100%{opacity:1}50%{opacity:.82}}
+
+  .scene.show .story-card{animation:sideInL .55s cubic-bezier(.22,1,.36,1) both;}
+  .scene.show .setup-form{animation:sideInR .55s cubic-bezier(.22,1,.36,1) both;}
+  .scene.show .panel{animation:panelIn .5s cubic-bezier(.22,1,.36,1) both;}
+  .scene.show #scene-sim .panel:nth-child(1){animation-delay:.04s}
+  .scene.show #scene-sim .panel:nth-child(2){animation-delay:.10s}
+  .scene.show #scene-sim .panel:nth-child(3){animation-delay:.16s}
+  .scene.show #scene-sim .panel:nth-child(4){animation-delay:.22s}
+  .scene.show #scene-end .end-left{animation:panelIn .5s cubic-bezier(.22,1,.36,1) both}
+  .scene.show #scene-end .end-right{animation:panelIn .5s .08s cubic-bezier(.22,1,.36,1) both}
+
+  .scan-beam{position:absolute;left:6%;right:6%;top:0;height:24px;pointer-events:none;
+    background:repeating-linear-gradient(0deg,rgba(53,224,240,.22) 0 4px,transparent 4px 8px);
+    border-top:3px solid rgba(53,224,240,.6);border-bottom:3px solid rgba(53,224,240,.6);
+    animation:scanMove 3.6s linear infinite;}
+  .stage-center.shake .scan-beam{animation:none;}
+
+  .impact::before{content:"";position:absolute;left:50%;top:50%;width:46px;height:46px;border:3px solid var(--red);box-shadow:0 0 0 3px var(--c0),6px 6px 0 rgba(255,59,84,.35);opacity:0;transform:translate(-50%,-50%) scale(.3);pointer-events:none;}
+  .impact.go::before{animation:shock .55s ease-out;}
+
+  .btn-start,.actions button{position:relative;overflow:hidden;}
+  .ripple{position:absolute;background:rgba(53,224,240,.32);box-shadow:2px 2px 0 rgba(53,224,240,.28);transform:translate(-50%,-50%) scale(0);pointer-events:none;animation:rippleFx .5s ease-out forwards;}
+  .score-big.rolling{animation:numGlow 1.2s ease-in-out infinite;}
+
+  .ecg{width:100%;height:38px;margin:2px 0 10px;display:block;opacity:.9;}
+  .ecg polyline{fill:none;stroke:var(--cyan);stroke-width:2;stroke-linejoin:miter;stroke-linecap:square;
+    stroke-dasharray:220;stroke-dashoffset:0;animation:ecgTrace 2.4s linear infinite;}
+
+  :focus-visible{outline:2px solid var(--cyan);outline-offset:2px;}
+  .opt:focus-visible{outline-offset:3px;}
+
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;}
+    .scene.show .panel,.scene.show .story-card,.scene.show .setup-form,
+    .scene.show #scene-end .end-left,.scene.show #scene-end .end-right{animation:none!important;}
+    .scan-beam,.impact::before{display:none!important;}
+    .ecg polyline{animation:none!important;stroke-dashoffset:0!important;}
+  }
+
+  /* 动效开关：强制开启时覆盖上述「减弱动态」限制 */
+  @media (prefers-reduced-motion: reduce){
+    html.anim-on *{transition-duration:initial!important;}
+    html.anim-on .brand .dot{animation:breath 2.4s ease-in-out infinite!important;}
+    html.anim-on .scene.show .story-card{animation:sideInL .55s cubic-bezier(.22,1,.36,1) both!important;}
+    html.anim-on .scene.show .setup-form{animation:sideInR .55s cubic-bezier(.22,1,.36,1) both!important;}
+    html.anim-on .scene.show .panel{animation:panelIn .5s cubic-bezier(.22,1,.36,1) both!important;}
+    html.anim-on .scene.show #scene-end .end-left{animation:panelIn .5s cubic-bezier(.22,1,.36,1) both!important;}
+    html.anim-on .scene.show #scene-end .end-right{animation:panelIn .5s .08s cubic-bezier(.22,1,.36,1) both!important;}
+    html.anim-on .scene.show .stage-center.shake{animation:shake .5s cubic-bezier(.36,.07,.19,.97)!important;}
+    html.anim-on .scan-beam{display:initial!important;animation:scanMove 3.6s linear infinite!important;}
+    html.anim-on .impact.go{animation:impactFlash .55s ease-out!important;}
+    html.anim-on .impact.go::before{display:initial!important;animation:shock .55s ease-out!important;}
+    html.anim-on .body-part.injured .impact-glow{animation:glowPulse 1.6s ease-in-out infinite!important;}
+    html.anim-on .body-part.pulse .bone{animation:bonePulse 1s ease-in-out infinite!important;}
+    html.anim-on .float-num{animation:floatUp 1.4s ease-out forwards!important;}
+    html.anim-on .ripple{animation:rippleFx .5s ease-out forwards!important;}
+    html.anim-on .score-big.rolling{animation:numGlow 1.2s ease-in-out infinite!important;}
+    html.anim-on .ecg polyline{animation:ecgTrace 2.4s linear infinite!important;stroke-dashoffset:0!important;}
+    html.anim-on .badge.drop{animation:badgeDrop .9s cubic-bezier(.2,1.4,.4,1) forwards!important;}
+  }
+
+  @media (max-width:880px){
+    body{overflow:auto;height:auto;}
+    .app{height:auto;min-height:100vh;}
+    #scene-sim.show,#scene-end.show,#scene-set.show{grid-template-columns:1fr !important;display:flex !important;flex-direction:column !important;height:auto !important;}
+    #scene-sim.show .log-panel{grid-column:auto;}
+    .body-box{height:320px;width:240px;}
+    .setup-form{max-height:none;}
+    .score-big{font-size:38px;}
+  }
+</style>
+</head>
+<body>
+<canvas id="wash" aria-hidden="true"></canvas>
+<div class="app">
+  <div class="topbar">
+    <div class="watermark">
+      <span class="wm-en">MotoShanKing</span>
+      <span class="wm-cn">山大王 <small>· 抖音号 1069581395</small></span>
+    </div>
+    <div class="brand"><span class="dot"></span>人体受伤模拟器 <small>· 摩托车事故伤情结算 · 装备能护住你吗</small></div>
+    <div class="steps">
+      <div class="step active" id="step-1">01 事故设定</div>
+      <div class="step" id="step-2">02 模拟过程</div>
+      <div class="step" id="step-3">03 总结画面</div>
+    </div>
+    <label class="anim-toggle" id="animToggleLabel" title="系统开启「减弱动态效果」时会自动关闭动效，可在此强制开启"><input type="checkbox" id="animToggle" checked><span>动效</span></label>
+  </div>
+  <div class="disclaimer-top">⚠️ 同样车速下：单纯路面滑行以擦伤挫伤为主，造成骨折重伤的往往是滑行途中撞击护栏、路肩、车辆等硬物。免责声明：本工具为内容创作模拟，数据基于公开资料与三甲量级估算，非医学诊断，不构成任何医疗或安全建议。伤残等级须以司法鉴定为准。</div>
+
+  <!-- 场景01 -->
+  <section class="scene show" id="scene-set">
+    <div class="setup-wrap">
+      <div class="story-card">
+        <h2>第一人称事故开场</h2>
+        <div class="tag">素材脚本 · 可改</div>
+        <div class="story-text" id="storyText"></div>
+      </div>
+      <div class="setup-form">
+        <div class="field">
+          <label>① 事故预设</label>
+          <div class="opts" data-group="preset">
+            <div class="opt sel" data-v="城市道路">城市道路</div>
+            <div class="opt" data-v="国道">国道</div>
+            <div class="opt" data-v="高速">高速</div>
+            <div class="opt" data-v="山路">山路</div>
+            <div class="opt" data-v="电瓶车别车">电瓶车别你</div>
+            <div class="opt" data-v="追尾">追尾</div>
+            <div class="opt" data-v="路口鬼探头">鬼探头</div>
+            <div class="opt" data-v="湿滑摔车">湿滑摔车</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>② 车速 (km/h)</label>
+          <div class="opts" data-group="speed">
+            <div class="opt" data-v="30">30</div>
+            <div class="opt sel" data-v="50">50</div>
+            <div class="opt" data-v="60">60</div>
+            <div class="opt" data-v="70">70</div>
+            <div class="opt" data-v="90">90</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>③ 头盔</label>
+          <div class="opts" data-group="helmet">
+            <div class="opt" data-v="无头盔">无头盔</div>
+            <div class="opt" data-v="半盔">半盔</div>
+            <div class="opt sel" data-v="全盔">全盔</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>④ 护具配置（等级：无 / EVA / CE1 / CE2；胸口·背部常缺失）</label>
+          <div class="subgrid">
+            <div class="field"><label>肩+肘</label><div class="opts" data-group="gear-arm"><div class="opt" data-v="无">无</div><div class="opt" data-v="EVA">EVA</div><div class="opt sel" data-v="CE1">CE1</div><div class="opt" data-v="CE2">CE2</div></div></div>
+            <div class="field"><label>膝+髋</label><div class="opts" data-group="gear-leg"><div class="opt" data-v="无">无</div><div class="opt" data-v="EVA">EVA</div><div class="opt sel" data-v="CE1">CE1</div><div class="opt" data-v="CE2">CE2</div></div></div>
+            <div class="field"><label>胸口</label><div class="opts" data-group="gear-chest"><div class="opt sel" data-v="无">无</div><div class="opt" data-v="EVA">EVA</div><div class="opt" data-v="CE1">CE1</div><div class="opt" data-v="CE2">CE2</div></div></div>
+            <div class="field"><label>背部</label><div class="opts" data-group="gear-back"><div class="opt" data-v="无">无</div><div class="opt" data-v="EVA">EVA</div><div class="opt sel" data-v="CE1">CE1</div><div class="opt" data-v="CE2">CE2</div></div></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>⑤ 种子（相同配置+种子 = 可复现）</label>
+          <div class="seed-row">
+            <input id="seedInput" value="" />
+            <button id="seedRand" type="button">随机</button>
+          </div>
+        </div>
+        <button class="btn-start" id="btnStart">▶ 开始模拟</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 场景02 -->
+  <section class="scene" id="scene-sim">
+    <div class="panel">
+      <h3>生命体征</h3>
+      <svg class="ecg" viewBox="0 0 220 38" preserveAspectRatio="none"><line class="lead" x1="0" y1="19" x2="220" y2="19" stroke="rgba(53,224,240,.22)" stroke-width="1"/><polyline points="0,19 40,19 48,18 52,5 58,33 64,18 72,19 110,19 118,18 122,7 128,31 134,18 170,19 178,18 182,6 188,32 194,18 220,19"/></svg>
+      <div class="vitals" id="vitals"></div>
+      <div class="inj-list" id="injList"></div>
+    </div>
+    <div class="panel stage-center" id="stageCenter">
+      <div class="scanline"></div>
+      <div class="scan-beam"></div>
+      <div class="impact" id="impact"><span>IMPACT</span></div>
+      <div class="body-box" id="bodyBox"></div>
+    </div>
+    <div class="panel">
+      <h3>结算数据</h3>
+      <div class="score-big" id="scoreBig">¥0</div>
+      <div class="score-sub">本次伤情费用得分</div>
+      <div class="control-row">
+        <div class="lbl">无装备对照（同事故·无防护）</div>
+        <div class="nogear" id="noGear">¥0</div>
+        <div class="save" id="saveAmt">装备省下 ¥0</div>
+      </div>
+      <div class="mini-stats">
+        <div class="mini"><div class="n" id="mInj">0</div><div class="t">受伤部位</div></div>
+        <div class="mini"><div class="n" id="mSev">0</div><div class="t">重伤项</div></div>
+        <div class="mini"><div class="n" id="mDay">0</div><div class="t">住院天数</div></div>
+        <div class="mini"><div class="n" id="mDis">0</div><div class="t">疑似伤残</div></div>
+      </div>
+    </div>
+    <div class="panel log-panel">
+      <h3>战斗日志 / 结算流水</h3>
+      <div class="log" id="log"></div>
+    </div>
+  </section>
+
+  <!-- 场景03 -->
+  <section class="scene" id="scene-end">
+    <div class="end-left">
+      <div class="badge-box">
+        <div class="badge" id="badge">?</div>
+        <div class="badge-cap" id="badgeCap"></div>
+      </div>
+      <div class="end-body" id="endBody"></div>
+    </div>
+    <div class="end-right">
+      <div class="cost-banner">
+        <div>
+          <div class="t">最终费用（主视觉）</div>
+          <div class="big" id="finalCost">¥0</div>
+        </div>
+        <div class="cmp">
+          <div class="lbl">无装备对照</div>
+          <div class="nogear" id="noGear2">¥0</div>
+          <div class="save" id="saveAmt2">装备省下 ¥0</div>
+        </div>
+      </div>
+      <div class="detail-panel">
+        <h3>费用明细（逐项展开）</h3>
+        <div id="detailList"></div>
+      </div>
+      <div class="disclaimer-end">费用基准：国内三甲公立医院 2025–2026 收费水平，医保报销前总价（含检查/治疗/耗材/住院/常规药）。医保参考：职工医保报销后自付约 30%–50%，居民医保约 50%–70%；误工与后续康复费用未计入。免责声明（二）：本结算为内容创作模拟，实际以医院票据为准；伤残等级须司法鉴定，本工具不替代专业医疗与法律意见。</div>
+      <div class="actions">
+        <button id="btnAgain">↻ 重新模拟</button>
+        <button id="btnCopy">⧉ 复制结果</button>
+        <button id="btnExport">⤓ 导出竖屏图</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ============ 种子随机 ============ */
+function xmur3(str){let h=1779033703^str.length;for(let i=0;i<str.length;i++){h=Math.imul(h^str.charCodeAt(i),3432918353);h=h<<13|h>>>19;}return function(){h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);return (h^=h>>>16)>>>0;};}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+function makeRNG(seedStr){const s=xmur3(seedStr);return mulberry32(s());}
+
+/* ============ 数据 ============ */
+const REGIONS=[
+  {key:'head', name:'颅脑/头部', part:'part-head'},
+  {key:'spine',name:'颈椎/脊柱', part:'part-spine'},
+  {key:'chest',name:'胸部/肋骨', part:'part-ribs'},
+  {key:'armL', name:'左上肢',   part:'part-arm-l'},
+  {key:'armR', name:'右上肢',   part:'part-arm-r'},
+  {key:'legL', name:'左下肢',   part:'part-leg-l'},
+  {key:'legR', name:'右下肢',   part:'part-leg-r'},
+  {key:'pelvis',name:'骨盆',    part:'part-pelvis'},
+];
+const POOL={
+  head:{低:['头皮挫裂伤','面部擦伤','头皮软组织挫伤','轻微脑震荡'],中:['颅骨骨折（闭合）','脑震荡综合征'],重:['重度颅脑损伤','开放性颅骨骨折','颅内出血']},
+  spine:{低:['颈部扭伤','颈椎轻度挫伤','软组织挫伤'],中:['颈椎骨折','胸椎压缩骨折'],重:['脊柱多发骨折','脊髓损伤','椎体爆裂骨折']},
+  chest:{低:['胸部软组织挫伤','皮肤擦伤','胸壁挫伤'],中:['单根肋骨骨折','胸骨骨折'],重:['多根多处肋骨骨折','肺挫伤','血气胸','肝脾破裂']},
+  arm:{低:['肘部擦伤','手腕扭伤','手部擦伤','上肢软组织挫伤'],中:['锁骨骨折','肱骨骨折','前臂骨折','腕骨骨折'],重:['肱骨开放骨折','多发上肢骨折','桡尺骨双骨折']},
+  leg:{低:['膝部擦伤','踝部扭伤','小腿擦伤','下肢软组织挫伤'],中:['髌骨骨折','胫腓骨骨折','股骨骨折','踝部骨折'],重:['股骨开放骨折','胫腓骨多发骨折','跟骨粉碎骨折','膝关节韧带断裂']},
+  pelvis:{低:['骨盆周围挫伤','臀部软组织挫伤'],中:['骨盆单处骨折'],重:['骨盆多发骨折','髋臼骨折']},
+};
+/* ===== 物理修正版伤害逻辑 =====
+   侧滑摔车 ≠ 全部动能硬吃：倒地后人与车在地面摩擦滑行、速度持续衰减，
+   纯滑行以擦伤/挫伤为主（哪怕 70/90km/h 也不一定骨折）；
+   只有滑行途中撞上护栏/路肩/车辆等硬物（种子决定分支），剩余动能才造成骨折/内脏重伤。
+   同一配置不同种子 → 一部分走「纯滑行」、一部分触发「撞击硬物」，速度越高撞击概率越大。 */
+const COLLIDE_P={30:0.15,50:0.30,60:0.38,70:0.45,90:0.65}; // 命中「撞击硬物」分支的基础概率
+/* 纯滑行：abr=单部位擦伤概率（皮肤接触地面就会磨）；tumble=翻滚导致扭伤/骨裂的概率 */
+const SLIDE={
+  abr:{30:0.70,50:0.75,60:0.78,70:0.80,90:0.85},
+  tumble:{30:0.02,50:0.05,60:0.08,70:0.11,90:0.14},
+};
+/* 撞击硬物：p=单部位受冲击概率；sev=无护具下重伤占比；mod=无护具下骨折占比（速度越高越狠） */
+const IMPACT={
+  p:{30:0.40,50:0.48,60:0.52,70:0.58,90:0.66},
+  sev:{30:0.04,50:0.10,60:0.14,70:0.20,90:0.28},
+  mod:{30:0.28,50:0.36,60:0.40,70:0.46,90:0.52},
+};
+/* 速度冲击力 → 擦伤深度/费用：高速滑行的擦伤是大面积深度擦伤（清创/反复换药），居家自愈占比大降 */
+const FORCE={30:0.25,50:0.45,60:0.60,70:0.75,90:0.95};
+/* 护具两维分开算，不混在一起：
+   ① 抗摩擦耐磨（防擦伤磨皮）——EVA 海绵 50km/h+ 滑行极易磨穿失效；CE 护具外壳耐磨 */
+const ABRASION_PROT={
+  无:{30:0,50:0,60:0,70:0,90:0},
+  EVA:{30:0.55,50:0.30,60:0.15,70:0.06,90:0.02},
+  CE1:{30:0.85,50:0.85,60:0.85,70:0.85,90:0.85},
+  CE2:{30:0.92,50:0.92,60:0.92,70:0.92,90:0.92},
+};
+/* ② 抗冲击吸能（撞击硬物时降骨折/重伤）——EVA 几乎无可靠吸能，≈心理缓冲 */
+const HELMET_MULT={无头盔:{inc:1,sev:1,mod:1},半盔:{inc:0.70,sev:0.55,mod:0.70},全盔:{inc:0.50,sev:0.25,mod:0.40}};
+const ARMOR_MULT={无:{inc:1,sev:1,mod:1},EVA:{inc:0.95,sev:0.95,mod:0.90},CE1:{inc:0.75,sev:0.45,mod:0.60},CE2:{inc:0.60,sev:0.22,mod:0.35}};
+// 事故预设：场景倍率 + 部位偏置 + 叙事；cMult=撞击硬物概率倍率；forced=直接撞击类（强制撞击分支）
+const SCENARIOS={
+  '城市道路':{mult:1.00,cMult:0.90,bias:{},note:'晚高峰的城市道路'},
+  '国道':{mult:1.05,cMult:1.25,bias:{},note:'车流不断的国道，障碍物多'},
+  '高速':{mult:1.15,cMult:1.30,bias:{},note:'深夜空旷的高速'},
+  '山路':{mult:1.10,cMult:1.70,bias:{},note:'连续弯道的山路，护栏石块多'},
+  '电瓶车别车':{mult:1.05,cMult:1.50,bias:{legL:1.30,legR:1.25,armL:1.15,armR:1.10},note:'前方电瓶车突然别你一下（仙王裹尸布）'},
+  '追尾':{forced:true,mult:1.05,bias:{spine:1.7,back:1.6,head:1.3},note:'后车追尾，你被顶了出去'},
+  '路口鬼探头':{forced:true,mult:1.05,bias:{head:1.6,chest:1.4,armL:1.2},note:'路口突然窜出，避无可避'},
+  '湿滑摔车':{mult:0.95,cMult:1.00,bias:{legL:1.4,legR:1.4,armL:1.3,armR:1.3},low:true,note:'暴雨湿滑，一滑就倒'},
+};
+
+/* ============ 模拟核心（同事故：有装备 vs 无装备 对照） ============ */
+function rollSevBase(roll, sevProb, modProb){
+  if(roll<sevProb) return '重';
+  if(roll<sevProb+modProb) return '中';
+  return '低';
+}
+/* 严重度 → 真实量级参考（三甲公立 2025-2026 · 医保报销前 · 含检查/治疗/耗材/住院/常规药）
+   摔车就医默认 CT 确诊、骨折多数住院观察，绝非"拍片开药回家"：
+   低：皮肤软组织门诊 ¥500–2500；深度擦伤住院 ¥5000–15000；脑震荡留观 ¥2k–6k；骨裂保守 ¥3k–22k（按部位）
+   中：移位骨折内固定 ¥15k–80k（锁骨/髌骨偏低，脊柱/骨盆偏高）；肋骨住院观察 ¥6k–15k
+   重：手术+ICU ¥18k–300k（四肢 3–6万 / 胸腔 1.8–8万 / 骨盆 8–15万 / 脊髓 10–30万 / 颅脑 8–20万） */
+const SEV_REF={
+  低:'门诊清创 ¥500–2500；深度擦伤住院 ¥5k–15k；脑震荡留观 ¥2k–6k；骨裂保守 ¥3k–22k',
+  中:'移位骨折内固定 ¥15k–80k（按部位）；肋骨住院观察 ¥6k–15k；颅骨骨折 ¥15k–45k',
+  重:'手术+ICU：四肢 3–6万 / 胸腔 1.8–8万 / 骨盆 8–15万 / 脊髓 10–30万 / 颅脑 8–20万'
+};
+const COST_RNG=(a,b,R)=>a+Math.round(R.r_surg*(b-a)); // 同一伤情在区间内随种子浮动
+function makeInjury(region, sev, R, force){
+  force=force||0;
+  let cost=0,surgery=0,icu=0,icuDays=0,meds=0,hosp=0,selfheal=false,dis=null,conservative=false;
+  const isLimb=region.key==='armL'||region.key==='armR'||region.key==='legL'||region.key==='legR';
+  const poolKey=region.key==='head'?'head':((region.key==='armL'||region.key==='armR')?'arm':(region.key==='chest'?'chest':(region.key==='spine'?'spine':(region.key==='pelvis'?'pelvis':'leg'))));
+  const arr=POOL[poolKey][sev];
+  const name=arr[Math.floor(R.r_sev*arr.length)%arr.length];
+  const fx=name.indexOf('骨折')>=0||name.indexOf('骨裂')>=0||name.indexOf('断裂')>=0;
+
+  if(sev==='低'){
+    if(poolKey==='head' && name.indexOf('脑震荡')>=0){
+      // 轻微脑震荡：急诊留观24h，含头颅CT 2000-6000
+      cost=COST_RNG(2000,6000,R); meds=Math.round(cost*0.25); hosp=1;
+    }else if(fx){
+      // 骨裂/无移位骨折保守：四肢 3000-9000；脊柱横突 8000-22000；骨盆 8000-20000；肋骨 2000-5000
+      const rg=poolKey==='spine'?[8000,22000]:(poolKey==='pelvis'?[8000,20000]:(poolKey==='chest'?[2000,5000]:[3000,9000]));
+      cost=COST_RNG(rg[0],rg[1],R); conservative=true; meds=Math.round(cost*0.15);
+      hosp=(poolKey==='spine'||poolKey==='pelvis')?10+Math.round(R.r_hosp*10):0; // 卧床观察
+    }else{
+      // 皮肤软组织：极轻微自购药 / 门诊清创 500-2500 / 高速深度擦伤住院清创 5000-15000
+      if(R.r_self<0.18){ selfheal=true; cost=50+Math.round(R.r_self*150); }
+      else if(R.r_depth<force*0.35){
+        cost=COST_RNG(5000,15000,R); meds=Math.round(cost*0.3); hosp=3+Math.round(R.r_hosp*8);
+      }else{
+        cost=COST_RNG(500,2500,R); meds=cost;
+      }
+    }
+  }else if(sev==='中'){
+    if(poolKey==='head'){
+      if(name.indexOf('脑震荡')>=0){ // 脑震荡综合征：留观+治疗 8000-20000
+        cost=COST_RNG(8000,20000,R); conservative=true; hosp=3+Math.round(R.r_hosp*4); meds=Math.round(cost*0.2);
+      }else{ // 颅骨骨折/脑挫伤住院 15000-45000（多次CT复查+降颅压）
+        cost=COST_RNG(15000,45000,R); conservative=true; hosp=7+Math.round(R.r_hosp*7); meds=Math.round(cost*0.25);
+      }
+      dis=null;
+    }else if(poolKey==='spine'){
+      if(R.r_surg<0.3){ // 横突骨折卧床保守 8000-22000
+        cost=COST_RNG(8000,22000,R); conservative=true; hosp=10+Math.round(R.r_hosp*8); meds=Math.round(cost*0.12);
+      }else{ // 椎体压缩：成形术/钉棒内固定（单节段）40000-80000
+        surgery=COST_RNG(40000,80000,R); cost=surgery; hosp=10+Math.round(R.r_hosp*8); meds=Math.round(cost*0.15);
+      }
+    }else if(poolKey==='pelvis'){
+      if(R.r_surg<0.35){ // 无移位/耻骨支裂纹：绝对卧床保守 8000-20000
+        cost=COST_RNG(8000,20000,R); conservative=true; hosp=14+Math.round(R.r_hosp*14); meds=Math.round(cost*0.12);
+      }else{ // 移位骨折：切开复位钢板内固定 30000-60000
+        surgery=COST_RNG(30000,60000,R); cost=surgery; hosp=10+Math.round(R.r_hosp*8); meds=Math.round(cost*0.15);
+      }
+    }else if(poolKey==='chest'){
+      if(R.r_hosp<0.35){ // 单根肋骨骨裂门诊保守（CT+胸带+药+复诊）2000-5000
+        cost=COST_RNG(2000,5000,R); conservative=true; meds=Math.round(cost*0.35);
+      }else{ // 骨折住院观察3-7天/多根保守 6000-15000
+        cost=COST_RNG(6000,15000,R); conservative=true; hosp=3+Math.round(R.r_hosp*4); meds=Math.round(cost*0.25);
+      }
+      dis=null; // 肋骨保守治疗极少评残
+    }else{ // 四肢
+      if(R.r_dis<0.4){ // 骨裂/无移位：石膏支具保守 3000-9000
+        cost=COST_RNG(3000,9000,R); conservative=true; meds=Math.round(cost*0.15); hosp=R.r_hosp<0.5?0:1+Math.round(R.r_hosp*3);
+      }else{ // 移位骨折：切开复位内固定 15000-35000（锁骨/髌骨/腕骨偏低，股骨/胫腓骨/跟骨偏高）
+        const hi=name.indexOf('股骨')>=0||name.indexOf('胫')>=0||name.indexOf('跟骨')>=0;
+        const lo=name.indexOf('锁骨')>=0||name.indexOf('髌骨')>=0||name.indexOf('腕')>=0;
+        surgery=COST_RNG(lo?15000:(hi?22000:15000), lo?26000:(hi?35000:35000), R);
+        cost=surgery; hosp=5+Math.round(R.r_hosp*9); meds=Math.round(cost*0.18);
+      }
+      if(R.r_icuDays<0.28) dis=8+Math.round(R.r_icu*2); // 8~10 级（须鉴定）
+    }
+  }else{ // 重：多发/开放/内脏/颅脑/脊髓 —— 先定总价（严格落在费用表区间），再按比例拆分手术/ICU/药
+    let rg=[30000,60000];
+    if(poolKey==='head')rg=[80000,200000];
+    else if(poolKey==='spine')rg=[100000,300000];
+    else if(poolKey==='pelvis')rg=[80000,150000];
+    else if(poolKey==='chest')rg=(name.indexOf('肝脾')>=0||name.indexOf('连枷')>=0)?[35000,80000]:[18000,45000];
+    cost=COST_RNG(rg[0],rg[1],R);
+    if(R.r_icu<0.6){ icu=Math.round(cost*0.28); icuDays=3+Math.round(R.r_icuDays*7); }
+    surgery=Math.round(cost*0.58);
+    meds=cost-surgery-icu;
+    hosp=(poolKey==='head'||poolKey==='spine'||poolKey==='pelvis')?14+Math.round(R.r_hosp*26):7+Math.round(R.r_hosp*21);
+    dis=4+Math.round(R.r_dis*6); // 4~10 级（须鉴定）
+  }
+  const treat = sev==='低' ? (selfheal?'居家自愈':(hosp>0?'住院清创换药':'门诊处理'))
+               : (sev==='重' ? '手术+重症监护' : (conservative?'保守治疗(石膏/支具/胸带)':'手术复位(内固定)'));
+  return {region:region.name, part:region.part, name, sev, surgery, icu, icuDays, meds, hosp, cost, selfheal, dis, conservative,
+    detail:(sev==='低'?(selfheal?'居家自愈':(name+' · '+treat)):(name+' · '+treat))};
+}
+function protFor(regionKey, params){
+  if(regionKey==='head') return HELMET_MULT[params.helmet];
+  if(regionKey==='spine') return ARMOR_MULT[params.gear.back];
+  if(regionKey==='chest') return ARMOR_MULT[params.gear.chest];
+  if(regionKey==='armL'||regionKey==='armR') return ARMOR_MULT[params.gear.arm];
+  return ARMOR_MULT[params.gear.leg]; // legL/legR/pelvis
+}
+function sevRank(s){return s==='重'?3:s==='中'?2:1;}
+/* 单部位结算（物理修正版）：
+   A. 纯滑行摩擦伤——皮肤蹭地面，抗磨防护（ABRASION_PROT）决定是否擦伤；翻滚小概率扭伤/骨裂
+   B. 撞击硬物冲击伤——仅在 collide 分支触发，吸能防护（HELMET/ARMOR_MULT）在此生效，取更重者
+   半盔特殊惩罚：滑行脸搓沥青→面部裂伤几乎必然；撞击时面部粉碎骨折 */
+function injureRegion(region,ctx){
+  const {spd,collide,regionMult,hel,arm,abrLevel,R,force,sc,helmet}=ctx;
+  const isHead=region.key==='head';
+  let inj=null;
+  // ---- A. 纯滑行摩擦（倒地就会蹭地面，速度持续衰减中） ----
+  const abrBase=SLIDE.abr[spd]*regionMult*(sc.low?0.9:1);
+  const abrP=abrBase*(isHead?hel.inc:1);
+  const abrProt=(ABRASION_PROT[abrLevel]||ABRASION_PROT['无'])[spd];
+  if(R.r_abr<abrP){
+    const eff=1-abrProt; // 摩擦/冲击透过护具的比例：EVA 高速接近1（磨穿），CE 很小
+    const tum=SLIDE.tumble[spd]*(sc.low?0.7:1)*(arm?arm.mod:1)*regionMult;
+    if(R.r_tum<tum){
+      const sev=rollSevBase(R.r_sev,0.01,0.45); // 翻滚多为扭伤/骨裂
+      inj=makeInjury(region,sev,R,force);
+    }else if(R.r_bruise<eff){
+      // 护具挡住破皮但挡不住挫伤：CE 下仅轻微淤青，EVA 高速则几乎等于擦伤
+      inj=makeInjury(region,'低',R,force);
+    }
+  }
+  // ---- B. 撞击硬物（滑行途中怼上护栏/路肩/车辆，剩余动能冲击） ----
+  if(collide){
+    const lowK=sc.low?0.6:1;
+    const impP=IMPACT.p[spd]*regionMult*(arm?arm.inc:1)*(isHead?hel.inc:1);
+    if(R.r_imp<impP){
+      const sev=rollSevBase(R.r_sev,IMPACT.sev[spd]*lowK*(isHead?hel.sev:arm.sev),IMPACT.mod[spd]*lowK*(isHead?hel.mod:arm.mod));
+      const cand=makeInjury(region,sev,R,force);
+      if(!inj||sevRank(cand.sev)>=sevRank(inj.sev)) inj=cand;
+    }
+  }
+  // 头部非全盔兜底（合并 A/B 后统一处理）：脸和下颌是裸漏的，头部伤一律按面部费用表计价
+  if(inj && isHead && helmet!=='全盔'){
+    const isHalf=helmet==='半盔';
+    if(inj.sev==='低'){
+      inj.name=isHalf?'面部擦伤/撕裂（半盔下颌裸漏）':'面部/头皮擦伤（无头盔）';
+      inj.cost=COST_RNG(2000,8000,R); inj.meds=Math.round(inj.cost*0.3);
+      inj.surgery=0; inj.hosp=0; inj.conservative=false; inj.icu=0; inj.icuDays=0; inj.selfheal=false;
+      inj.detail=isHalf?'半盔面部裸漏 · 急诊清创/美容缝合':'无头盔面部蹭地 · 急诊清创/美容缝合';
+    }else if(inj.sev==='中'){
+      inj.name=isHalf?'面部粉碎骨折（半盔下颌裸漏）':'颅面部骨折（无头盔）';
+      inj.cost=COST_RNG(15000,50000,R); inj.surgery=Math.round(inj.cost*0.85);
+      inj.meds=Math.round(inj.cost*0.15); inj.hosp=5+Math.round(R.r_hosp*5);
+      inj.conservative=false; inj.selfheal=false; inj.icu=0; inj.icuDays=0; inj.dis=null;
+      inj.detail=inj.name+' · 颌骨内固定/牙科修复';
+    }else{
+      inj.name=isHalf?'面部粉碎性骨折（半盔下颌裸漏）':'面部粉碎性骨折（无头盔）';
+      inj.cost=COST_RNG(50000,150000,R); inj.surgery=Math.round(inj.cost*0.8);
+      inj.icu=(R.r_icu<0.6)?Math.round(inj.cost*0.22):0; inj.icuDays=inj.icu>0?3+Math.round(R.r_icuDays*5):0;
+      inj.cost+=inj.icu; inj.meds=Math.round(inj.cost*0.15);
+      inj.hosp=10+Math.round(R.r_hosp*12); inj.conservative=false; inj.selfheal=false;
+      inj.detail=inj.name+' · 多次整形修复/疤痕治疗';
+    }
+  }
+  return inj;
+}
+function buildAccident(params, seed){
+  const rng=makeRNG(seed+'|'+params.preset+'|'+params.speed);
+  const sc=SCENARIOS[params.preset];
+  const spd=+params.speed;
+  // 种子决定事故分支：纯滑行 vs 撞击硬物（有/无装备对照共享同一分支、同一随机流 → 同一起事故）
+  const collide=sc.forced?true:(rng()<Math.min(0.95,COLLIDE_P[spd]*(sc.cMult||1)));
+  const force=Math.min(1,(FORCE[spd]||0.6)*(sc.low?0.7:1)*sc.mult);
+  const headAbr=params.helmet==='全盔'?'CE2':(params.helmet==='半盔'?'EVA':'无'); // 头盔外壳耐磨映射
+  const withGear=[],noGear=[];
+  for(const r of REGIONS){
+    const isLimb=r.key==='armL'||r.key==='armR'||r.key==='legL'||r.key==='legR';
+    const regionMult=sc.mult*(sc.bias[r.key]||1);
+    const hel=HELMET_MULT[params.helmet];
+    const armorLevel=r.key==='spine'?params.gear.back:(r.key==='chest'?params.gear.chest:(isLimb?params.gear.arm:params.gear.leg));
+    const arm=ARMOR_MULT[armorLevel];
+    const R={r_abr:rng(),r_tum:rng(),r_imp:rng(),r_bruise:rng(),r_depth:rng(),r_sev:rng(),r_self:rng(),r_surg:rng(),r_hosp:rng(),r_meds:rng(),r_icu:rng(),r_icuDays:rng(),r_dis:rng(),r_down:rng()};
+    // 无装备：基准事故（不戴盔、无护具，承受完整冲击/摩擦）
+    const ng=injureRegion(r,{spd,collide,regionMult,hel:HELMET_MULT['无头盔'],arm:ARMOR_MULT['无'],abrLevel:'无',R,force,sc,helmet:'无头盔'});
+    if(ng)noGear.push(ng);
+    // 有装备：同一事故，护具分别削减「摩擦伤」与「冲击伤」
+    let g=injureRegion(r,{spd,collide,regionMult,hel,arm,abrLevel:r.key==='head'?headAbr:armorLevel,R,force,sc,helmet:params.helmet});
+    if(g && isLimb && g.sev==='中' && arm.sev<=0.45 && R.r_down<0.5){ // CE 护具下四肢骨折常只是骨裂/挫伤级
+      g=makeInjury(r,'低',R,force);
+    }
+    if(g)withGear.push(g);
+  }
+  return {withGear,noGear,collide};
+}
+function simulate(params, seed){
+  const {withGear, noGear, collide}=buildAccident(params, seed);
+  const injuries=withGear.slice();
+  const order={'重':0,'中':1,'低':2};
+  injuries.sort((a,b)=>order[a.sev]-order[b.sev]);
+  const total=injuries.reduce((s,i)=>s+i.cost,0);
+  const noGearTotal=noGear.reduce((s,i)=>s+i.cost,0);
+  const sevCount=injuries.filter(i=>i.sev==='重').length;
+  const hospTotal=injuries.reduce((s,i)=>s+i.hosp,0);
+  const disCount=injuries.filter(i=>i.dis).length;
+  let rating,cap;
+  if(total<4000){rating='S';cap='防护极佳 · 几乎无伤';}
+  else if(total<25000){rating='A';cap='轻伤为主 · 恢复快';}
+  else if(total<90000){rating='B';cap='骨折手术 · 需住院';}
+  else if(total<250000){rating='C';cap='重伤 · 重症监护';}
+  else {rating='D';cap='极重 · 长期康复';}
+  const sevIndex=injuries.reduce((s,i)=>s+(i.sev==='重'?10:i.sev==='中'?3:1),0);
+  const vitalsFinal={
+    hr:Math.min(150,Math.round(75+sevIndex*1.6)),
+    sys:Math.max(70,Math.round(120-sevIndex*1.3)),
+    dia:Math.max(45,Math.round(80-sevIndex*0.9)),
+    spo2:Math.max(85,Math.round(98-sevIndex*0.7)),
+    resp:Math.min(34,Math.round(16+sevIndex*0.9)),
+    temp:36.5
+  };
+  return {injuries,total,noGearTotal,sevCount,hospTotal,disCount,rating,cap,vitalsFinal,sevIndex,collide};
+}
+
+/* ============ 骨骼 SVG（更真实 · 随伤变红） ============ */
+function buildSkeleton(){
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="440" viewBox="0 0 200 440" preserveAspectRatio="xMidYMid meet">
+    <defs>
+      <radialGradient id="redGlow"><stop offset="0%" stop-color="#ff3b54" stop-opacity="0.9"/><stop offset="55%" stop-color="#ff3b54" stop-opacity="0.4"/><stop offset="100%" stop-color="#ff3b54" stop-opacity="0"/></radialGradient>
+      <linearGradient id="fleshGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#35E0F0" stop-opacity="0.12"/><stop offset="100%" stop-color="#35E0F0" stop-opacity="0.03"/></linearGradient>
+      <style>
+        .bone{fill:none;stroke:#35E0F0;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round;}
+        .joint{fill:rgba(53,224,240,.12);stroke:#35E0F0;stroke-width:2;}
+        .flesh{fill:url(#fleshGrad);stroke:#35E0F0;stroke-opacity:.28;stroke-width:1.4;}
+        .impact-glow{opacity:0;}
+        .body-part.injured .bone{stroke:var(--inj,#ff3b54);}
+        .body-part.injured .joint{fill:rgba(255,59,84,.28);stroke:var(--inj,#ff3b54);}
+        .body-part.injured .impact-glow{opacity:var(--glow,1);}
+      </style>
+    </defs>
+    <g class="flesh">
+      <ellipse cx="100" cy="44" rx="30" ry="34"/>
+      <path d="M74 98 Q70 100 73 122 L80 200 Q82 216 100 217 Q118 216 120 200 L127 122 Q130 100 126 98 Q100 88 74 98 Z"/>
+      <path d="M55 106 Q48 150 52 214 Q56 226 62 224 L66 150 Q64 112 72 104 Z"/>
+      <path d="M145 106 Q152 150 148 214 Q144 226 138 224 L134 150 Q136 112 128 104 Z"/>
+      <path d="M82 218 Q80 320 84 404 Q88 414 92 404 L94 320 Q92 230 96 218 Z"/>
+      <path d="M118 218 Q120 320 116 404 Q112 414 108 404 L106 320 Q108 230 104 218 Z"/>
+    </g>
+    <g class="body-part" id="part-head">
+      <ellipse class="bone" cx="100" cy="44" rx="23" ry="27"/>
+      <path class="bone" d="M83 60 q17 18 34 0"/>
+      <line class="bone" x1="100" y1="71" x2="100" y2="86"/>
+      <circle class="impact-glow" cx="100" cy="46" r="36" fill="url(#redGlow)"/>
+    </g>
+    <g class="body-part" id="part-spine">
+      <line class="bone" x1="100" y1="86" x2="100" y2="252"/>
+      <circle class="joint" cx="100" cy="98" r="3"/><circle class="joint" cx="100" cy="112" r="3"/><circle class="joint" cx="100" cy="126" r="3"/><circle class="joint" cx="100" cy="140" r="3"/><circle class="joint" cx="100" cy="154" r="3"/><circle class="joint" cx="100" cy="168" r="3"/><circle class="joint" cx="100" cy="182" r="3"/><circle class="joint" cx="100" cy="196" r="3"/><circle class="joint" cx="100" cy="210" r="3"/><circle class="joint" cx="100" cy="224" r="3"/><circle class="joint" cx="100" cy="238" r="3"/>
+      <circle class="impact-glow" cx="100" cy="170" r="32" fill="url(#redGlow)"/>
+    </g>
+    <g class="body-part" id="part-ribs">
+      <path class="bone" d="M96 108 q-30 2 -34 14"/><path class="bone" d="M96 120 q-32 2 -36 15"/><path class="bone" d="M96 132 q-32 2 -36 15"/><path class="bone" d="M96 144 q-30 2 -33 14"/><path class="bone" d="M96 156 q-26 2 -28 12"/><path class="bone" d="M96 168 q-22 2 -23 10"/>
+      <path class="bone" d="M104 108 q30 2 34 14"/><path class="bone" d="M104 120 q32 2 36 15"/><path class="bone" d="M104 132 q32 2 36 15"/><path class="bone" d="M104 144 q30 2 33 14"/><path class="bone" d="M104 156 q26 2 28 12"/><path class="bone" d="M104 168 q22 2 23 10"/>
+      <line class="bone" x1="100" y1="104" x2="100" y2="172"/>
+      <path class="bone" d="M88 100 L70 106"/><path class="bone" d="M112 100 L130 106"/>
+      <circle class="impact-glow" cx="100" cy="140" r="44" fill="url(#redGlow)"/>
+    </g>
+    <g class="body-part" id="part-pelvis">
+      <path class="bone" d="M84 252 q-18 16 -10 40 q16 8 26 -2"/>
+      <path class="bone" d="M116 252 q18 16 10 40 q-16 8 -26 -2"/>
+      <circle class="impact-glow" cx="100" cy="276" r="36" fill="url(#redGlow)"/>
+    </g>
+    <g class="body-part" id="part-arm-l">
+      <circle class="joint" cx="72" cy="106" r="5"/>
+      <path class="bone" d="M72 110 L60 170"/><path class="bone" d="M76 112 L64 170"/>
+      <path class="bone" d="M60 170 L52 222"/><path class="bone" d="M64 170 L56 222"/>
+      <circle class="joint" cx="60" cy="170" r="4"/><circle class="joint" cx="52" cy="222" r="4"/>
+      <ellipse class="joint" cx="50" cy="230" rx="6" ry="8"/>
+      <circle class="impact-glow" cx="62" cy="166" r="28" fill="url(#redGlow)"/>
+    </g>
+    <g class="body-part" id="part-arm-r">
+      <circle class="joint" cx="128" cy="106" r="5"/>
+      <path class="bone" d="M128 110 L140 170"/><path class="bone" d="M124 112 L136 170"/>
+      <path class="bone" d="M140 170 L148 222"/><path class="bone" d="M136 170 L144 222"/>
+      <circle class="joint" cx="140" cy="170" r="4"/><circle class="joint" cx="148" cy="222" r="4"/>
+      <ellipse class="joint" cx="150" cy="230" rx="6" ry="8"/>
+      <circle class="impact-glow" cx="138" cy="166" r="28" fill="url(#redGlow)"/>
+    </g>
+    <g class="body-part" id="part-leg-l">
+      <circle class="joint" cx="90" cy="256" r="5"/>
+      <path class="bone" d="M90 258 L86 332"/><path class="bone" d="M94 258 L90 332"/>
+      <path class="bone" d="M86 332 L84 404"/><path class="bone" d="M90 332 L88 404"/>
+      <circle class="joint" cx="86" cy="332" r="4"/><circle class="joint" cx="84" cy="404" r="4"/>
+      <ellipse class="joint" cx="84" cy="412" rx="7" ry="5"/>
+      <circle class="impact-glow" cx="86" cy="330" r="32" fill="url(#redGlow)"/>
+    </g>
+    <g class="body-part" id="part-leg-r">
+      <circle class="joint" cx="110" cy="256" r="5"/>
+      <path class="bone" d="M110 258 L114 332"/><path class="bone" d="M106 258 L110 332"/>
+      <path class="bone" d="M114 332 L116 404"/><path class="bone" d="M110 332 L112 404"/>
+      <circle class="joint" cx="114" cy="332" r="4"/><circle class="joint" cx="116" cy="404" r="4"/>
+      <ellipse class="joint" cx="116" cy="412" rx="7" ry="5"/>
+      <circle class="impact-glow" cx="114" cy="330" r="32" fill="url(#redGlow)"/>
+    </g>
+  </svg>`;
+}
+const FLOAT_POS={partHead:[50,11],partSpine:[50,30],partRibs:[50,33],partPelvis:[50,62],partArmL:[22,38],partArmR:[78,38],partLegL:[40,75],partLegR:[60,75]};
+
+/* ============ 体征渲染 ============ */
+const VITAL_DEFS=[
+  {k:'hr',name:'心率',get:v=>v.hr,fmt:v=>v.hr,green:v=>v.hr<100,orange:v=>v.hr<=130},
+  {k:'bp',name:'血压',get:v=>v,fmt:v=>v.sys+'/'+v.dia,green:v=>v.sys>=100,orange:v=>v.sys>=85},
+  {k:'spo2',name:'血氧',get:v=>v.spo2,fmt:v=>v.spo2,green:v=>v.spo2>=95,orange:v=>v.spo2>=90},
+  {k:'resp',name:'呼吸',get:v=>v.resp,fmt:v=>v.resp,green:v=>v.resp<=20,orange:v=>v.resp<=28},
+  {k:'temp',name:'体温',get:v=>v.temp,fmt:v=>v.temp.toFixed(1),green:v=>v.temp>=36&&v.temp<=37.5,orange:v=>v.temp>=35.5},
+];
+function vitalStatusColor(v,d){ if(d.green(v))return 'var(--green)'; if(d.orange(v))return 'var(--orange)'; return 'var(--red)'; }
+function renderVitalsShell(){
+  const el=document.getElementById('vitals');el.innerHTML='';
+  for(const d of VITAL_DEFS){
+    const div=document.createElement('div');div.className='vital';
+    div.innerHTML=`<div class="vname">${d.name}</div><div class="vbar"><i id="vb-${d.k}"></i></div><div class="vval" id="vv-${d.k}">--</div>`;
+    el.appendChild(div);
+  }
+}
+function updateVitals(v){
+  for(const d of VITAL_DEFS){
+    const bar=document.getElementById('vb-'+d.k), val=document.getElementById('vv-'+d.k);
+    const c=vitalStatusColor(v,d);
+    const pct=d.k==='temp'?50:Math.max(8,Math.min(100,(d.get(v)/(d.k==='hr'?160:d.k==='spo2'?100:d.k==='resp'?36:140))*100));
+    bar.style.width=pct+'%'; bar.style.background=c; bar.style.boxShadow='0 0 8px '+c;
+    val.textContent=d.fmt(v); val.style.color=c;
+  }
+}
+const VITAL_START={hr:75,sys:120,dia:80,spo2:98,resp:16,temp:36.5};
+
+/* ============ 格式化 ============ */
+const yuan=n=>'¥'+Math.round(n).toLocaleString('zh-CN');
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* ============ 严重度→颜色分档，档内按费用渐深 ============
+   轻伤：黄色渐变（浅黄→深琥珀）｜中度：浅红渐变（浅红→正红）｜重度：大红渐变（警示红→深绯红） */
+const SEV_RAMP={
+  低:[[0,    [255,238,158]],  // 浅黄：擦伤淤青
+     [2500, [255,210,64]],   // 中黄
+     [15000,[255,158,10]]],  // 深琥珀：大面积深度擦伤
+  中:[[0,    [255,178,173]],  // 浅红：单处骨裂保守
+     [12000,[255,122,118]],  // 珊瑚红
+     [60000,[255,86,94]]],   // 正红：内固定手术
+  重:[[0,    [255,56,72]],    // 大红：手术+ICU
+     [120000,[226,18,44]],   // 深红
+     [300000,[168,0,26]]]    // 深绯红：极重
+};
+const _lerp=(a,b,t)=>a+(b-a)*t;
+const _rgb=a=>`rgb(${Math.round(a[0])},${Math.round(a[1])},${Math.round(a[2])})`;
+function sevT(sev,cost){
+  const ramp=SEV_RAMP[sev]||SEV_RAMP['低'];
+  const c=Math.max(0,cost);
+  if(c<=ramp[0][0]) return 0;
+  for(let i=1;i<ramp.length;i++){
+    if(c<=ramp[i][0]){const a=ramp[i-1][0],b=ramp[i][0];return (i-1+(c-a)/(b-a))/(ramp.length-1);}
+  }
+  return 1;
+}
+function costColor(sev,cost){
+  const ramp=SEV_RAMP[sev]||SEV_RAMP['低'];
+  const c=Math.max(0,cost);
+  if(c<=ramp[0][0]) return _rgb(ramp[0][1]);
+  for(let i=1;i<ramp.length;i++){
+    if(c<=ramp[i][0]){
+      const a=ramp[i-1][0], b=ramp[i][0], t=(c-a)/(b-a);
+      const ca=ramp[i-1][1], cb=ramp[i][1];
+      return _rgb([_lerp(ca[0],cb[0],t),_lerp(ca[1],cb[1],t),_lerp(ca[2],cb[2],t)]);
+    }
+  }
+  return _rgb(ramp[ramp.length-1][1]);
+}
+function costGlow(sev,cost){
+  const base=sev==='重'?0.55:(sev==='中'?0.35:0.22);
+  return (base+(1-base)*sevT(sev,cost)).toFixed(3);
+}
+
+/* ============ 状态 ============ */
+let STATE=null;
+const params={preset:'高速',speed:'50',helmet:'全盔',gear:{arm:'CE1',leg:'CE1',chest:'无',back:'CE1'},seed:''};
+
+function refreshStory(){
+  const sc=SCENARIOS[params.preset];
+  const helmetTxt=params.helmet==='无头盔'?'没戴头盔':(params.helmet==='半盔'?'只戴半盔':'戴着全盔');
+  const g=params.gear;
+  const gearTxt=`肩肘${g.arm}/膝${g.leg}/胸口${g.chest==='无'?'无':g.chest}/背${g.back}`;
+  document.getElementById('storyText').innerHTML=
+    `我骑着车，在<b>${sc.note}</b>上以 <b>${params.speed} km/h</b> 行驶。${helmetTxt}，`+
+    `护具配置 <b>${gearTxt}</b>。下一秒，意外就来了——这一摔，<b>装备能护住你吗</b>？`;
+}
+
+/* ============ 选项 ============ */
+document.querySelectorAll('.opts').forEach(g=>{
+  g.addEventListener('click',e=>{
+    const o=e.target.closest('.opt');if(!o)return;
+    g.querySelectorAll('.opt').forEach(x=>x.classList.remove('sel'));
+    o.classList.add('sel');
+    const grp=g.dataset.group;
+    if(grp.startsWith('gear-')) params.gear[grp.slice(5)]=o.dataset.v;
+    else params[grp]=o.dataset.v;
+    refreshStory();
+  });
+});
+function newSeed(){params.seed=Math.random().toString(36).slice(2,9);document.getElementById('seedInput').value=params.seed;}
+document.getElementById('seedRand').addEventListener('click',newSeed);
+
+document.getElementById('btnStart').addEventListener('click',()=>{
+  params.seed=document.getElementById('seedInput').value.trim()||(Math.random().toString(36).slice(2,9));
+  document.getElementById('seedInput').value=params.seed;
+  runSimulation();
+});
+
+async function runSimulation(){
+  const seed=params.seed;
+  STATE=simulate(params, seed);
+  showScene('sim');
+  document.getElementById('bodyBox').innerHTML=buildSkeleton();
+  document.getElementById('log').innerHTML='';
+  document.getElementById('injList').innerHTML='';
+  document.getElementById('scoreBig').textContent='¥0';
+  document.getElementById('noGear').textContent=yuan(STATE.noGearTotal);
+  document.getElementById('saveAmt').textContent='装备省下 '+yuan(STATE.noGearTotal-STATE.total);
+  document.getElementById('mInj').textContent='0';document.getElementById('mSev').textContent='0';
+  document.getElementById('mDay').textContent='0';document.getElementById('mDis').textContent='0';
+  renderVitalsShell(); updateVitals(VITAL_START);
+  const stage=document.getElementById('stageCenter'), imp=document.getElementById('impact');
+  stage.classList.add('shake'); imp.classList.add('go');
+  logLine('crit','⚡ IMPACT — 撞击发生，开始伤情结算');
+  logLine(STATE.collide?'warn':'',STATE.collide
+    ?'⚠ 事故走向 — 滑行途中撞上护栏/路肩等硬物，剩余动能全额作用于身体'
+    :'◦ 事故走向 — 纯路面滑行，摩擦持续减速，未撞击硬物');
+  await sleep(1000); stage.classList.remove('shake'); imp.classList.remove('go');
+  await sleep(300);
+  const scoreEl=document.getElementById('scoreBig'); scoreEl.classList.add('rolling');
+  let runCost=0,injShown=0,sevShown=0,dayShown=0,disShown=0;
+  const n=STATE.injuries.length;
+  for(let i=0;i<n;i++){
+    const inj=STATE.injuries[i];
+    const part=document.getElementById(inj.part);
+    if(part){
+      part.style.setProperty('--inj',costColor(inj.sev,inj.cost));
+      part.classList.add('injured','pulse');
+      const g=part.querySelector('.impact-glow'); if(g) g.style.fillOpacity=costGlow(inj.sev,inj.cost);
+      setTimeout(()=>part.classList.remove('pulse'),1400);
+    }
+    floatNum(inj.part,'+'+yuan(inj.cost));
+    addInjItem(inj); injShown++;
+    runCost+=inj.cost;
+    rollNumber(document.getElementById('scoreBig'),runCost,320);
+    if(inj.sev==='重')sevShown++; dayShown+=inj.hosp; if(inj.dis)disShown++;
+    document.getElementById('mInj').textContent=injShown;document.getElementById('mSev').textContent=sevShown;
+    document.getElementById('mDay').textContent=dayShown;document.getElementById('mDis').textContent=disShown;
+    const tag=inj.sev==='重'?'crit':(inj.sev==='中'?'warn':'');
+    logLine(tag,`▸ ${inj.region} <span class="ic">•</span> ${inj.name} — <span class="amt">${yuan(inj.cost)}</span>`+
+      (inj.hosp?` · 住院${inj.hosp}天`:'')+(inj.icuDays?` · ICU ${inj.icuDays}天`:'')+(inj.dis?` · 疑似${inj.dis}级伤残`:''));
+    const f=STATE.vitalsFinal,k=(i+1)/n;
+    updateVitals({hr:Math.round(VITAL_START.hr+(f.hr-VITAL_START.hr)*k),sys:Math.round(VITAL_START.sys+(f.sys-VITAL_START.sys)*k),dia:Math.round(VITAL_START.dia+(f.dia-VITAL_START.dia)*k),spo2:Math.round(VITAL_START.spo2+(f.spo2-VITAL_START.spo2)*k),resp:Math.round(VITAL_START.resp+(f.resp-VITAL_START.resp)*k),temp:36.5});
+    document.getElementById('bodyBox').style.setProperty('--dmg',Math.min(1,STATE.sevIndex/30*(k)).toFixed(3));
+    await sleep(1350);
+  }
+  if(n===0){logLine('','▸ 本次未造成明显外伤，装备防护到位');document.getElementById('bodyBox').style.setProperty('--dmg','0');}
+  logLine('','✓ 结算完成 — 进入总结画面');
+  await sleep(1300);
+  scoreEl.classList.remove('rolling');
+  showScene('end'); buildEnd();
+}
+
+function floatNum(partId, txt){
+  const map={'part-head':'partHead','part-spine':'partSpine','part-ribs':'partRibs','part-pelvis':'partPelvis','part-arm-l':'partArmL','part-arm-r':'partArmR','part-leg-l':'partLegL','part-leg-r':'partLegR'};
+  const pos=FLOAT_POS[map[partId]]||[50,40];
+  const el=document.createElement('div');el.className='float-num';el.textContent=txt;
+  el.style.left=pos[0]+'%';el.style.top=pos[1]+'%';
+  document.getElementById('bodyBox').appendChild(el);setTimeout(()=>el.remove(),1500);
+}
+function addInjItem(inj){
+  const el=document.createElement('div');el.className='inj-item sev-'+inj.sev;
+  el.innerHTML=`<span class="nm">${inj.region}·${inj.name}</span><span class="c">${inj.sev} ${yuan(inj.cost)}</span>`;
+  document.getElementById('injList').appendChild(el);
+  requestAnimationFrame(()=>el.classList.add('in'));
+}
+function logLine(cls, html){
+  const el=document.createElement('div');el.className='ln '+(cls||'');
+  el.innerHTML=`<span class="ic">${cls==='crit'?'⚠':cls==='warn'?'◈':'›'}</span> ${html}`;
+  const log=document.getElementById('log');log.appendChild(el);
+  requestAnimationFrame(()=>el.classList.add('in'));log.scrollTop=log.scrollHeight;
+}
+function rollNumber(el, target, dur){
+  const start=parseInt((el.dataset.v||'0'));const t0=performance.now();
+  function step(t){const p=Math.min(1,(t-t0)/dur);const e=1-Math.pow(1-p,3);const v=Math.round(start+(target-start)*e);el.textContent=yuan(v);if(p<1)requestAnimationFrame(step);else el.dataset.v=target;}
+  el.dataset.v=start;requestAnimationFrame(step);
+}
+
+/* ============ 场景03 ============ */
+function buildEnd(){
+  document.getElementById('endBody').innerHTML=buildSkeleton();
+  for(const inj of STATE.injuries){const p=document.getElementById(inj.part);if(p){p.style.setProperty('--inj',costColor(inj.sev,inj.cost));p.classList.add('injured');const g=p.querySelector('.impact-glow');if(g)g.style.fillOpacity=costGlow(inj.sev,inj.cost);}}
+  const badge=document.getElementById('badge');
+  badge.className='badge '+STATE.rating;badge.textContent=STATE.rating;
+  document.getElementById('badgeCap').textContent=STATE.cap+' · 评级 '+STATE.rating;
+  requestAnimationFrame(()=>badge.classList.add('drop'));
+  rollNumber(document.getElementById('finalCost'),STATE.total,1200);
+  document.getElementById('noGear2').textContent=yuan(STATE.noGearTotal);
+  document.getElementById('saveAmt2').textContent='装备省下 '+yuan(STATE.noGearTotal-STATE.total);
+  const dl=document.getElementById('detailList');dl.innerHTML='';
+  if(STATE.injuries.length===0){dl.innerHTML='<div style="color:var(--green);padding:8px">本次未造成明显外伤，装备防护到位 ✔</div>';}
+  for(const inj of STATE.injuries){
+    const d=document.createElement('details');
+    let rows=`<div class="row"><b>部位</b><span class="v">${inj.region}</span></div><div class="row"><b>伤情</b><span class="v">${inj.name}</span></div><div class="row"><b>严重度</b><span class="v">${inj.sev}</span></div>`;
+    if(inj.selfheal)rows+=`<div class="row"><b>处置</b><span class="v">居家自愈</span></div>`;
+    if(inj.surgery)rows+=`<div class="row"><b>手术费</b><span class="v">${yuan(inj.surgery)}</span></div>`;
+    if(inj.icu)rows+=`<div class="row"><b>ICU(${inj.icuDays}天)</b><span class="v">${yuan(inj.icu)}</span></div>`;
+    if(inj.meds)rows+=`<div class="row"><b>药品/耗材</b><span class="v">${yuan(inj.meds)}</span></div>`;
+    if(inj.hosp)rows+=`<div class="row"><b>住院</b><span class="v">${inj.hosp} 天</span></div>`;
+    rows+=`<div class="row"><b>小计</b><span class="v">${yuan(inj.cost)}</span></div>`;
+    if(inj.dis)rows+=`<div class="row"><b>疑似伤残</b><span class="v">${inj.dis}级（须司法鉴定）</span></div>`;
+    d.innerHTML=`<summary><span>${inj.region}·${inj.name}</span><span class="sev sev-${inj.sev}">${inj.sev} ${yuan(inj.cost)}</span></summary><div class="body">${rows}</div>`;
+    dl.appendChild(d);
+  }
+}
+
+/* ============ 导出抖音竖屏图（9:16，零依赖） ============ */
+function markedSkeletonSVG(){
+  let svg=buildSkeleton();
+  for(const i of STATE.injuries){
+    const style='--inj:'+costColor(i.sev,i.cost)+';--glow:'+costGlow(i.sev,i.cost);
+    svg=svg.replace('id="'+i.part+'"','id="'+i.part+'" class="injured" style="'+style+'"');
+  }
+  return svg;
+}
+function wrapText(ctx,text,x,y,maxW,lh){
+  const chars=text.split('');let line='';let yy=y;
+  for(const c of chars){if(ctx.measureText(line+c).width>maxW){ctx.fillText(line,x,yy);line=c;yy+=lh;}else line+=c;}
+  ctx.fillText(line,x,yy);
+}
+function exportImage(){
+  if(!STATE)return;
+  const ST=STATE,W=1080,H=1920;
+  const FONT='"PingFang SC","Microsoft YaHei",sans-serif';
+  const CY='#35E0F0',YE='#FFD400',RD='#ff3b54',GN='#3ee07a',OR='#ff9d2e',INK='#eef7fc',DIM='#9db4c7';
+  const cv=document.createElement('canvas');cv.width=W;cv.height=H;
+  const ctx=cv.getContext('2d');
+  const rr=(x,y,w,h,r)=>{if(w<2*r)r=w/2;if(h<2*r)r=h/2;ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();};
+  const hexA=(h,a)=>{const n=parseInt(h.slice(1),16);return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;};
+
+  // 背景：深空渐变 + 青色辉光 + 危险红晕（按伤势）+ 网格 + 暗角
+  const bg=ctx.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#0b1526');bg.addColorStop(.55,'#070d18');bg.addColorStop(1,'#04070e');
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  const glow=ctx.createRadialGradient(W*0.32,360,30,W*0.32,360,720);glow.addColorStop(0,'rgba(53,224,240,.18)');glow.addColorStop(1,'rgba(53,224,240,0)');ctx.fillStyle=glow;ctx.fillRect(0,0,W,H);
+  if(ST.sevIndex>0){const d=Math.min(1,ST.sevIndex/26);const dg=ctx.createRadialGradient(W*0.7,1480,30,W*0.7,1480,820);dg.addColorStop(0,'rgba(255,59,84,'+(0.12*d).toFixed(3)+')');dg.addColorStop(1,'rgba(255,59,84,0)');ctx.fillStyle=dg;ctx.fillRect(0,0,W,H);}
+  ctx.strokeStyle='rgba(53,224,240,.05)';ctx.lineWidth=1;
+  for(let x=0;x<=W;x+=64){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<=H;y+=64){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  const vig=ctx.createRadialGradient(W/2,H/2,520,W/2,H/2,1120);vig.addColorStop(0,'rgba(0,0,0,0)');vig.addColorStop(1,'rgba(0,0,0,.5)');ctx.fillStyle=vig;ctx.fillRect(0,0,W,H);
+
+  // 品牌水印（左上角）
+  ctx.textAlign='left';ctx.fillStyle=CY;ctx.font='900 26px '+FONT;ctx.fillText('MotoShanKing',64,64);
+  ctx.fillStyle=DIM;ctx.font='22px '+FONT;ctx.fillText('山大王 · 抖音号 1069581395',64,94);
+
+  // 头部
+  ctx.textAlign='center';ctx.fillStyle=CY;ctx.font='800 46px '+FONT;ctx.fillText('人体受伤模拟器',W/2,96);
+  ctx.fillStyle=DIM;ctx.font='24px '+FONT;ctx.fillText('装备能护住你吗 · 事故伤情结算',W/2,138);
+  const meta=`${SCENARIOS[params.preset].note} · ${params.speed}km/h · ${ST.collide?'撞击硬物':'纯滑行'} · ${params.helmet} · 肩肘${params.gear.arm}/膝${params.gear.leg}/胸${params.gear.chest}/背${params.gear.back}`;
+  ctx.font='22px '+FONT;const mw=ctx.measureText(meta).width+52;
+  rr(W/2-mw/2,162,mw,48,24);ctx.fillStyle='rgba(53,224,240,.10)';ctx.fill();ctx.strokeStyle='rgba(120,210,235,.3)';ctx.lineWidth=1;ctx.stroke();
+  ctx.fillStyle=INK;ctx.textBaseline='middle';ctx.fillText(meta,W/2,186);ctx.textBaseline='alphabetic';
+
+  // 人体图（受伤部位随 SVG 内联样式变红）
+  const svg=markedSkeletonSVG();
+  const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const img=new Image();
+  const finish=()=>{
+    drawRight();drawDetails();drawFooter();
+    cv.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='伤情结算_抖音竖屏.png';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500);});
+  };
+  img.onload=()=>{
+    const fx=64,fw=320,fy=250,fh=700;
+    ctx.save();rr(fx-16,fy-16,fw+32,fh+32,24);ctx.clip();
+    ctx.fillStyle='rgba(53,224,240,.06)';ctx.fillRect(fx-16,fy-16,fw+32,fh+32);
+    ctx.drawImage(img,fx,fy,fw,fh);ctx.restore();
+    rr(fx-16,fy-16,fw+32,fh+32,24);ctx.strokeStyle='rgba(120,210,235,.25)';ctx.lineWidth=1.5;ctx.stroke();
+    URL.revokeObjectURL(url);finish();
+  };
+  img.onerror=()=>{URL.revokeObjectURL(url);finish();};
+  img.src=url;
+
+  function drawRight(){
+    const col={S:GN,A:CY,B:YE,C:OR,D:RD}[ST.rating];
+    const bx=730,by=400,br=120;
+    const halo=ctx.createRadialGradient(bx,by,20,bx,by,br+46);halo.addColorStop(0,hexA(col,.3));halo.addColorStop(1,hexA(col,0));ctx.fillStyle=halo;ctx.beginPath();ctx.arc(bx,by,br+46,0,7);ctx.fill();
+    ctx.beginPath();ctx.arc(bx,by,br,0,7);ctx.lineWidth=8;ctx.strokeStyle=col;ctx.stroke();
+    ctx.fillStyle=col;ctx.font='900 132px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(ST.rating,bx,by+4);ctx.textBaseline='alphabetic';
+    ctx.textAlign='center';ctx.fillStyle=DIM;ctx.font='22px '+FONT;ctx.fillText(ST.cap,bx,by+br+44);
+    const cx=W-40;ctx.textAlign='right';
+    ctx.fillStyle=DIM;ctx.font='24px '+FONT;ctx.fillText('本次伤情费用（有装备）',cx,636);
+    ctx.fillStyle=YE;ctx.font='900 90px '+FONT;ctx.fillText('¥'+Math.round(ST.total).toLocaleString('zh-CN'),cx,712);
+    ctx.fillStyle=RD;ctx.font='26px '+FONT;ctx.fillText('无装备对照 ¥'+Math.round(ST.noGearTotal).toLocaleString('zh-CN'),cx,754);
+    ctx.fillStyle=GN;ctx.font='28px '+FONT;ctx.fillText('装备省下 ¥'+Math.round(ST.noGearTotal-ST.total).toLocaleString('zh-CN'),cx,794);
+    const barX=470,barW=560,y0=848,max=Math.max(ST.total,ST.noGearTotal,1);
+    bar(barX,y0,barW,'有装备',ST.total,CY,max);
+    bar(barX,y0+56,barW,'无装备',ST.noGearTotal,RD,max);
+  }
+  function bar(x,y,w,label,val,c,max){
+    ctx.textAlign='left';ctx.fillStyle=INK;ctx.font='22px '+FONT;ctx.fillText(label,x,y-8);
+    rr(x,y,w,26,13);ctx.fillStyle='rgba(255,255,255,.05)';ctx.fill();
+    const pw=Math.max(6,val/max*w);rr(x,y,pw,26,13);ctx.fillStyle=c;ctx.fill();
+    ctx.textAlign='right';ctx.fillStyle=c;ctx.font='700 22px '+FONT;ctx.fillText('¥'+Math.round(val).toLocaleString('zh-CN'),x+w,y-8);
+  }
+  function drawDetails(){
+    ctx.textAlign='left';ctx.fillStyle=CY;ctx.font='800 30px '+FONT;ctx.fillText('费用明细',64,992);
+    const list=ST.injuries.slice(0,8);let y=1024;
+    if(list.length===0){ctx.fillStyle=GN;ctx.font='26px '+FONT;ctx.fillText('本次未造成明显外伤，装备防护到位 ✔',64,y+44);return;}
+    for(const i of list){
+      const sc={低:GN,中:OR,重:RD}[i.sev];
+      rr(64,y,952,80,14);ctx.fillStyle='rgba(255,255,255,.04)';ctx.fill();ctx.strokeStyle='rgba(120,210,235,.16)';ctx.lineWidth=1;ctx.stroke();
+      ctx.beginPath();ctx.arc(96,y+40,9,0,7);ctx.fillStyle=sc;ctx.fill();
+      ctx.textAlign='left';ctx.fillStyle=INK;ctx.font='700 26px '+FONT;ctx.fillText(`${i.region}·${i.name}`,122,y+36);
+      ctx.fillStyle=DIM;ctx.font='20px '+FONT;
+      const treat=i.sev==='低'?(i.selfheal?'居家自愈':(i.cost>200?'门诊+拍片':'门诊处理')):(i.sev==='重'?'手术+重症监护':(i.conservative?'保守治疗(石膏/支具)':'手术复位'));
+      const sub=`${i.sev} · ${treat}${i.hosp?` · 住院${i.hosp}天`:''}${i.icuDays?` · ICU ${i.icuDays}天`:''}${i.dis?` · 疑似${i.dis}级伤残`:''}`;
+      ctx.fillText(sub,122,y+64);
+      ctx.textAlign='right';ctx.fillStyle=YE;ctx.font='700 28px '+FONT;ctx.fillText('¥'+Math.round(i.cost).toLocaleString('zh-CN'),1000,y+48);
+      y+=92;
+    }
+    if(ST.injuries.length>8){ctx.fillStyle=DIM;ctx.font='20px '+FONT;ctx.textAlign='left';ctx.fillText('（其余 '+(ST.injuries.length-8)+' 项略）',64,y+30);}
+  }
+  function drawFooter(){
+    ctx.textAlign='center';ctx.fillStyle='#5f7689';ctx.font='19px '+FONT;
+    wrapText(ctx,'免责声明：本结算为内容创作模拟，费用按三甲公立 2025-2026 医保前水平估算，实际以医院票据为准（医保后自付约30%-70%）；伤残等级须司法鉴定，不替代专业医疗与法律意见。',64,H-110,W-128,26);
+    ctx.fillStyle=CY;ctx.font='700 21px '+FONT;ctx.fillText('MotoShanKing · 山大王 · 抖音号 1069581395 — 装备能护住你吗 —',W/2,H-46);
+  }
+}
+
+/* ============ 场景切换 ============ */
+function showScene(s){
+  document.getElementById('scene-set').classList.toggle('show',s==='set');
+  document.getElementById('scene-sim').classList.toggle('show',s==='sim');
+  document.getElementById('scene-end').classList.toggle('show',s==='end');
+  document.getElementById('step-1').className='step'+(s==='set'?' active':' done');
+  document.getElementById('step-2').className='step'+(s==='sim'?' active':(s==='end'?' done':''));
+  document.getElementById('step-3').className='step'+(s==='end'?' active':'');
+}
+
+document.getElementById('btnAgain').addEventListener('click',()=>showScene('set'));
+document.getElementById('btnCopy').addEventListener('click',()=>{
+  const txt=`【人体受伤模拟器】${SCENARIOS[params.preset].note}·${params.speed}km/h·${STATE.collide?'撞击硬物':'纯滑行'}·${params.helmet}·肩肘${params.gear.arm}/膝${params.gear.leg}/胸口${params.gear.chest}/背${params.gear.back}\n最终费用 ${yuan(STATE.total)}（无装备对照 ${yuan(STATE.noGearTotal)}，装备省下 ${yuan(STATE.noGearTotal-STATE.total)}）\n评级 ${STATE.rating} · ${STATE.cap}\n`+STATE.injuries.map(i=>`· ${i.region} ${i.name}（${i.sev}）${yuan(i.cost)}`).join('\n');
+  navigator.clipboard?.writeText(txt).then(()=>{const b=document.getElementById('btnCopy');b.textContent='✓ 已复制';setTimeout(()=>b.textContent='⧉ 复制结果',1500);});
+});
+document.getElementById('btnExport').addEventListener('click',exportImage);
+
+/* ============ 初始化 ============ */
+function init(){
+  newSeed();refreshStory();renderVitalsShell();
+  const demo=new URLSearchParams(location.search).get('demo');
+  if(demo==='1'){
+    params.preset='高速';params.speed='70';params.helmet='全盔';
+    params.gear={arm:'CE2',leg:'CE2',chest:'CE2',back:'CE2'};params.seed='demo123';
+    syncOpts();refreshStory();document.getElementById('seedInput').value=params.seed;
+    setTimeout(runSimulation,400);
+  }
+}
+function syncOpts(){
+  document.querySelectorAll('.opts').forEach(g=>{
+    g.querySelectorAll('.opt').forEach(o=>{
+      const grp=g.dataset.group;
+      const want=grp.startsWith('gear-')?params.gear[grp.slice(5)]:params[grp];
+      o.classList.toggle('sel',o.dataset.v===want);
+    });
+  });
+}
+function attachRipple(sel){
+  document.querySelectorAll(sel).forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      const r=btn.getBoundingClientRect();
+      const s=document.createElement('span');s.className='ripple';
+      const d=Math.max(r.width,r.height);
+      s.style.width=s.style.height=d+'px';
+      s.style.left=(e.clientX-r.left)+'px';s.style.top=(e.clientY-r.top)+'px';
+      btn.appendChild(s);setTimeout(()=>s.remove(),620);
+    });
+  });
+}
+attachRipple('.btn-start');attachRipple('.actions button');
+
+/* 动效开关：默认开；系统「减弱动态效果」时也能强制开启 */
+const animToggle=document.getElementById('animToggle');
+function applyAnim(){
+  document.documentElement.classList.toggle('anim-on', animToggle.checked);
+}
+animToggle.addEventListener('change', applyAnim);
+applyAnim();
+
+/* ============ Bayer 4x4 有序抖动背景（像素风，杜绝平滑渐变） ============ */
+const BAYER=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
+function renderWash(){
+  const cv=document.getElementById('wash');if(!cv)return;
+  const PX=6; // 屏幕上一个"像素块"的边长
+  const W=Math.max(2,Math.ceil(innerWidth/PX)),H=Math.max(2,Math.ceil(innerHeight/PX));
+  cv.width=W;cv.height=H;
+  const ctx=cv.getContext('2d');
+  const img=ctx.createImageData(W,H);
+  const A=[10,14,26],B=[20,27,46],C=[27,39,64]; // 精确对应 --c0/--c1/--c2
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const wave=(Math.sin(x*0.09+y*0.045)*0.5+0.5)*0.10;
+    const drift=Math.sin(x*0.021-y*0.017)*0.06;
+    let v=0.30+(y/H)*0.45+wave+drift;
+    v=Math.max(0,Math.min(0.999,v));
+    const th=(BAYER[y&3][x&3]+0.5)/16;
+    let col;
+    if(v>0.66)col=v>0.66+th*0.33?C:B;
+    else col=v>0.33+th*0.33?B:A;
+    const idx=(y*W+x)*4;
+    img.data[idx]=col[0];img.data[idx+1]=col[1];img.data[idx+2]=col[2];img.data[idx+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+}
+renderWash();
+let washResizeTimer;
+addEventListener('resize',()=>{clearTimeout(washResizeTimer);washResizeTimer=setTimeout(renderWash,180);});
+
+init();
+</script>
+</body>
+</html>
